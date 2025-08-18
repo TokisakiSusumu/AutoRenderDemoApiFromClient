@@ -1,5 +1,7 @@
 ﻿using AutoRender.Client.Models;
+using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http.Json;
+using System.Security.Claims;
 
 namespace AutoRender.Client;
 
@@ -10,3 +12,78 @@ internal class WeatherForecastService(HttpClient httpClient) : IWeatherForecastS
         return await httpClient.GetFromJsonAsync<WeatherForecast[]>("api/WeatherForecast");
     }
 }
+
+public class ClientAuthService : IAuthService
+{
+    private readonly HttpClient _httpClient;
+
+    public ClientAuthService(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<bool> LoginAsync(LoginRequest loginRequest)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/auth/login", loginRequest);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task LogoutAsync()
+    {
+        await _httpClient.PostAsync("api/auth/logout", null);
+    }
+
+    public async Task<UserInfo?> GetCurrentUserAsync()
+    {
+        return await _httpClient.GetFromJsonAsync<UserInfo>("api/auth/current-user");
+    }
+}
+
+public class CustomAuthStateProvider : AuthenticationStateProvider
+{
+    private readonly IAuthService _authService;
+    private UserInfo? _currentUser;
+
+    public CustomAuthStateProvider(IAuthService authService)
+    {
+        _authService = authService;
+    }
+
+    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
+    {
+        _currentUser = await _authService.GetCurrentUserAsync();
+
+        if (_currentUser?.IsAuthenticated == true)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, _currentUser.Email),
+                new Claim(ClaimTypes.Email, _currentUser.Email)
+            };
+
+            foreach (var role in _currentUser.Roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            var identity = new ClaimsIdentity(claims, "serverauth");
+            return new AuthenticationState(new ClaimsPrincipal(identity));
+        }
+
+        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+    }
+
+    public async Task LoginAsync(LoginRequest loginRequest)
+    {
+        await _authService.LoginAsync(loginRequest);
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+    }
+
+    public async Task LogoutAsync()
+    {
+        await _authService.LogoutAsync();
+        _currentUser = null;
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+    }
+}
+
