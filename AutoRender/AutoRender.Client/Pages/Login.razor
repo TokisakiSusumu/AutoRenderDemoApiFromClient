@@ -1,6 +1,7 @@
 ﻿@page "/login"
 @using AutoRender.Client.Models
-@inject CustomAuthStateProvider AuthStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @rendermode InteractiveAuto
 
@@ -12,31 +13,52 @@
 }
 
 <EditForm Model="loginRequest" OnValidSubmit="HandleLogin">
-    <div class="form-group">
+    <div class="form-group mb-3">
         <label>Email:</label>
         <InputText @bind-Value="loginRequest.Email" class="form-control" />
     </div>
-    <div class="form-group">
+    <div class="form-group mb-3">
         <label>Password:</label>
         <InputText @bind-Value="loginRequest.Password" type="password" class="form-control" />
     </div>
-    <button type="submit" class="btn btn-primary">Login</button>
+    <button type="submit" class="btn btn-primary" disabled="@isLoading">
+        @if (isLoading)
+        {
+            <span>Logging in...</span>
+        }
+        else
+        {
+            <span>Login</span>
+        }
+    </button>
 </EditForm>
 
 @code {
     private LoginRequest loginRequest = new();
     private string errorMessage = "";
+    private bool isLoading = false;
 
     private async Task HandleLogin()
     {
         try
         {
-            await AuthStateProvider.LoginAsync(loginRequest);
-            Navigation.NavigateTo("/");
+            isLoading = true;
+            errorMessage = "";
+
+            var customAuthProvider = AuthStateProvider as CustomAuthStateProvider;
+            if (customAuthProvider != null)
+            {
+                await customAuthProvider.LoginAsync(loginRequest);
+                Navigation.NavigateTo("/weather", forceLoad: true);
+            }
         }
         catch
         {
             errorMessage = "Login failed. Please check your credentials.";
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 }

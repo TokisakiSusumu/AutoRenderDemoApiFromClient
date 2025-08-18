@@ -1,7 +1,11 @@
 ﻿using AutoRender.Client;
 using AutoRender.Client.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AutoRender.Controllers;
 [Route("api/[controller]")]
@@ -9,11 +13,13 @@ namespace AutoRender.Controllers;
 public class WeatherForecastController(IWeatherForecastService weatherForecastService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<WeatherForecast[]>> Get() 
+    [Authorize] // Add this to protect the endpoint
+    public async Task<ActionResult<WeatherForecast[]>> Get()
     {
         return await weatherForecastService.GetWeatherForecastsAsync();
     }
 }
+
 
 [Route("api/[controller]")]
 [ApiController]
@@ -31,8 +37,8 @@ public class AuthController : ControllerBase
     {
         var success = await _authService.LoginAsync(loginRequest);
         if (success)
-            return Ok();
-        return Unauthorized();
+            return Ok(new { success = true });
+        return Unauthorized(new { success = false, message = "Invalid credentials" });
     }
 
     [HttpPost("logout")]
@@ -47,7 +53,7 @@ public class AuthController : ControllerBase
     {
         var user = await _authService.GetCurrentUserAsync();
         if (user == null)
-            return Unauthorized();
+            return Ok(new UserInfo { IsAuthenticated = false });
         return Ok(user);
     }
 }

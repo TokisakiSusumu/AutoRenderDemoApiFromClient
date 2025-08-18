@@ -24,18 +24,36 @@ public class ClientAuthService : IAuthService
 
     public async Task<bool> LoginAsync(LoginRequest loginRequest)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/auth/login", loginRequest);
-        return response.IsSuccessStatusCode;
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/auth/login", loginRequest);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public async Task LogoutAsync()
     {
-        await _httpClient.PostAsync("api/auth/logout", null);
+        try
+        {
+            await _httpClient.PostAsync("api/auth/logout", null);
+        }
+        catch { }
     }
 
     public async Task<UserInfo?> GetCurrentUserAsync()
     {
-        return await _httpClient.GetFromJsonAsync<UserInfo>("api/auth/current-user");
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<UserInfo>("api/auth/current-user");
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
 
@@ -75,8 +93,15 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
 
     public async Task LoginAsync(LoginRequest loginRequest)
     {
-        await _authService.LoginAsync(loginRequest);
-        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        var success = await _authService.LoginAsync(loginRequest);
+        if (success)
+        {
+            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        }
+        else
+        {
+            throw new InvalidOperationException("Login failed");
+        }
     }
 
     public async Task LogoutAsync()
@@ -86,4 +111,5 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 }
+
 

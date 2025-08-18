@@ -1,5 +1,10 @@
 ﻿using AutoRender.Client;
 using AutoRender.Client.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
+using System.Security.Claims;
 
 namespace AutoRender;
 
@@ -7,7 +12,6 @@ internal class WeatherForecastService : IWeatherForecastService
 {
     public async Task<WeatherForecast[]> GetWeatherForecastsAsync()
     {
-        // Simulate asynchronous loading to demonstrate streaming rendering
         await Task.Delay(500);
 
         var startDate = DateOnly.FromDateTime(DateTime.Now);
@@ -21,105 +25,125 @@ internal class WeatherForecastService : IWeatherForecastService
         return forecasts;
     }
 }
-
-
-public class AuthTokenStorage
+public class ServerAuthStateProvider : ServerAuthenticationStateProvider
 {
-    private readonly Dictionary<string, LoginResponse> _tokens = new();
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public void StoreToken(string sessionId, LoginResponse token)
+    public ServerAuthStateProvider(IHttpContextAccessor httpContextAccessor)
     {
-        _tokens[sessionId] = token;
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    public LoginResponse? GetToken(string sessionId)
+    public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        return _tokens.TryGetValue(sessionId, out var token) ? token : null;
-    }
-
-    public void RemoveToken(string sessionId)
-    {
-        _tokens.Remove(sessionId);
+        var httpContext = _httpContextAccessor.HttpContext;
+        var user = httpContext?.User ?? new ClaimsPrincipal(new ClaimsIdentity());
+        return Task.FromResult(new AuthenticationState(user));
     }
 }
-
 
 public class ServerAuthService : IAuthService
 {
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly AuthTokenStorage _tokenStorage;
 
-    public ServerAuthService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, AuthTokenStorage tokenStorage)
+    public ServerAuthService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor)
     {
         _httpClient = httpClient;
         _httpContextAccessor = httpContextAccessor;
-        _tokenStorage = tokenStorage;
     }
 
     public async Task<bool> LoginAsync(LoginRequest loginRequest)
     {
-        // Call your external API
-        var response = await _httpClient.PostAsJsonAsync("https://localhost:7191/login", loginRequest);
-
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
-            if (loginResponse != null)
+            // Call external API for authentication
+            var response = await _httpClient.PostAsJsonAsync("https://localhost:7191/login", loginRequest);
+
+            if (response.IsSuccessStatusCode)
             {
-                var sessionId = GetOrCreateSessionId();
-                _tokenStorage.StoreToken(sessionId, loginResponse);
-                return true;
+                var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                if (loginResponse != null)
+                {
+                    var httpContext = _httpContextAccessor.HttpContext;
+                    if (httpContext != null)
+                    {
+                        // Store bearer token in session
+                        httpContext.Session.SetString("BearerToken", loginResponse.AccessToken);
+                        httpContext.Session.SetString("RefreshToken", loginResponse.RefreshToken ?? "");
+
+                        // Create claims for cookie authentication
+                        var claims = new List<Claim>
+                        {
+                            new Claim(ClaimTypes.Email, loginRequest.Email),
+                            new Claim(ClaimTypes.Name, loginRequest.Email)
+                        };
+
+                        // Parse roles from token if needed (simplified here)
+                        claims.Add(new Claim(ClaimTypes.Role, "User"));
+
+                        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                        var authProperties = new AuthenticationProperties
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(2)
+                        };
+
+                        // Sign in with cookie authentication
+                        await httpContext.SignInAsync(
+                            CookieAuthenticationDefaults.AuthenticationScheme,
+                            new ClaimsPrincipal(claimsIdentity),
+                            authProperties);
+
+                        return true;
+                    }
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            // Log exception
+            Console.WriteLine($"Login failed: {ex.Message}");
         }
         return false;
     }
 
-    public Task LogoutAsync()
+    public async Task LogoutAsync()
     {
-        var sessionId = GetSessionId();
-        if (!string.IsNullOrEmpty(sessionId))
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext != null)
         {
-            _tokenStorage.RemoveToken(sessionId);
+            // Clear session
+            httpContext.Session.Clear();
+
+            // Sign out from cookie authentication
+            await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         }
-        return Task.CompletedTask;
     }
 
     public Task<UserInfo?> GetCurrentUserAsync()
     {
-        var sessionId = GetSessionId();
-        if (string.IsNullOrEmpty(sessionId))
-            return Task.FromResult<UserInfo?>(null);
-
-        var token = _tokenStorage.GetToken(sessionId);
-        if (token == null)
-            return Task.FromResult<UserInfo?>(null);
-
-        // Parse token to get user info (simplified - you might need to decode JWT)
-        return Task.FromResult<UserInfo?>(new UserInfo
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext?.User?.Identity?.IsAuthenticated == true)
         {
-            Email = "user@example.com", // Extract from token
-            Roles = new[] { "User" }, // Extract from token
-            IsAuthenticated = true
-        });
-    }
+            var email = httpContext.User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+            var roles = httpContext.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray();
 
-    private string GetSessionId()
-    {
-        return _httpContextAccessor.HttpContext?.Session.GetString("SessionId") ?? "";
-    }
-
-    private string GetOrCreateSessionId()
-    {
-        var context = _httpContextAccessor.HttpContext;
-        var sessionId = context?.Session.GetString("SessionId");
-
-        if (string.IsNullOrEmpty(sessionId))
-        {
-            sessionId = Guid.NewGuid().ToString();
-            context?.Session.SetString("SessionId", sessionId);
+            return Task.FromResult<UserInfo?>(new UserInfo
+            {
+                Email = email,
+                Roles = roles,
+                IsAuthenticated = true
+            });
         }
 
-        return sessionId;
+        return Task.FromResult<UserInfo?>(null);
+    }
+
+    // Helper method to get bearer token for API calls
+    public string? GetBearerToken()
+    {
+        return _httpContextAccessor.HttpContext?.Session.GetString("BearerToken");
     }
 }
+
