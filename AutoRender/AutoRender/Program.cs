@@ -18,7 +18,7 @@ namespace AutoRender
 
             builder.Services.AddControllers();
             builder.Services.AddHttpContextAccessor();
-
+            builder.Services.AddDistributedMemoryCache();
             // Add session for storing auth state
             builder.Services.AddSession(options =>
             {
