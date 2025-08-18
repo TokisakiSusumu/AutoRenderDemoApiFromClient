@@ -26,7 +26,14 @@ namespace AutoRender
                 options.Cookie.HttpOnly = true;
                 options.Cookie.IsEssential = true;
             });
-
+            // ADD THIS - Configure cookie authentication
+            builder.Services.AddAuthentication("Cookies")
+                .AddCookie("Cookies", options =>
+                {
+                    options.LoginPath = "/login";
+                    options.LogoutPath = "/logout";
+                    options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+                });
             // Add authentication services
             builder.Services.AddSingleton<AuthTokenStorage>();
             builder.Services.AddHttpClient<IAuthService, ServerAuthService>();
