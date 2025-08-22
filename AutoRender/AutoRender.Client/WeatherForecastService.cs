@@ -26,6 +26,7 @@ public class ClientAuthService : IAuthService
     {
         try
         {
+            // This calls the Blazor Server endpoint which then calls the API
             var response = await _httpClient.PostAsJsonAsync("api/auth/login", loginRequest);
             return response.IsSuccessStatusCode;
         }

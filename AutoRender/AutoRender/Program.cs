@@ -1,5 +1,4 @@
 using AutoRender.Client;
-using AutoRender.Client.Pages;
 using AutoRender.Components;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -39,9 +38,9 @@ public class Program
                 options.SlidingExpiration = true;
             });
 
-        // Services
+        // Configure HttpClient and services
         builder.Services.AddHttpClient<IAuthService, ServerAuthService>();
-        builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
+        builder.Services.AddHttpClient<IWeatherForecastService, WeatherForecastService>();
 
         // Authorization
         builder.Services.AddAuthorizationCore();
@@ -69,7 +68,5 @@ public class Program
             .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 
         app.Run();
-
-
     }
 }
