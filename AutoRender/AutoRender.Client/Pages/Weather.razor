@@ -2,17 +2,22 @@
 @using AutoRender.Client.Models
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
+@inject IWeatherForecastService WeatherForecastService
 @rendermode InteractiveAuto
 
 <PageTitle>Weather</PageTitle>
 
 <h1>Weather</h1>
 
-<p>This component demonstrates showing data.</p>
+<p>This component demonstrates showing data from the API.</p>
 
 @if (forecasts == null)
 {
     <p><em>Loading...</em></p>
+}
+else if (!forecasts.Any())
+{
+    <p><em>No weather data available.</em></p>
 }
 else
 {
@@ -40,12 +45,18 @@ else
 }
 
 @code {
-    [Inject]
-    private IWeatherForecastService weatherForecastService { get; set; }
     private WeatherForecast[]? forecasts;
 
     protected override async Task OnInitializedAsync()
     {
-        forecasts = await weatherForecastService.GetWeatherForecastsAsync();
+        try
+        {
+            forecasts = await WeatherForecastService.GetWeatherForecastsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading weather data: {ex.Message}");
+            forecasts = Array.Empty<WeatherForecast>();
+        }
     }
 }

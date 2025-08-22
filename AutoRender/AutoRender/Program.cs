@@ -26,6 +26,7 @@ public class Program
             options.IdleTimeout = TimeSpan.FromHours(2);
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
+            options.Cookie.SameSite = SameSiteMode.Lax; // Add this
         });
 
         // Cookie authentication for the Blazor app
@@ -36,11 +37,15 @@ public class Program
                 options.LogoutPath = "/logout";
                 options.ExpireTimeSpan = TimeSpan.FromHours(2);
                 options.SlidingExpiration = true;
+                options.Cookie.SameSite = SameSiteMode.Lax; // Add this
             });
 
-        // Configure HttpClient and services
-        builder.Services.AddHttpClient<IAuthService, ServerAuthService>();
-        builder.Services.AddHttpClient<IWeatherForecastService, WeatherForecastService>();
+        // Add HttpClientFactory for API calls
+        builder.Services.AddHttpClient();
+
+        // Configure services for server-side rendering
+        builder.Services.AddScoped<IAuthService, ServerAuthService>();
+        builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
 
         // Authorization
         builder.Services.AddAuthorizationCore();
@@ -56,7 +61,8 @@ public class Program
 
         app.UseHttpsRedirection();
         app.UseStaticFiles();
-        app.UseSession();
+        app.UseRouting(); // Add this
+        app.UseSession(); // Must be before UseEndpoints
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseAntiforgery();

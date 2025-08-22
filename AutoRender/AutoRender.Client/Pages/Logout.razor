@@ -1,0 +1,16 @@
+﻿@page "/logout"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveAuto
+
+<h3>Logging out...</h3>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.LogoutAsync();
+        // Force reload to clear all authentication state
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

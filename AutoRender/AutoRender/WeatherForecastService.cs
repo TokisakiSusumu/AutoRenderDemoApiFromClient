@@ -2,8 +2,6 @@
 using AutoRender.Client.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 
@@ -21,13 +19,11 @@ internal class WeatherForecastService : IWeatherForecastService
         _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
 
-        // Configure HttpClient with API base URL
         _httpClient.BaseAddress = new Uri(_configuration["ApiBaseUrl"] ?? "https://localhost:7191/");
     }
 
     public async Task<WeatherForecast[]> GetWeatherForecastsAsync()
     {
-        // Add bearer token to request
         var token = _httpContextAccessor.HttpContext?.Session.GetString("BearerToken");
         if (!string.IsNullOrEmpty(token))
         {
@@ -35,14 +31,17 @@ internal class WeatherForecastService : IWeatherForecastService
                 new AuthenticationHeaderValue("Bearer", token);
         }
 
-        // Call your API endpoint for weather data
-        var response = await _httpClient.GetAsync("api/weatherforecast");
-        if (response.IsSuccessStatusCode)
+        try
         {
-            return await response.Content.ReadFromJsonAsync<WeatherForecast[]>() ?? [];
+            var response = await _httpClient.GetAsync("api/weatherforecast");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<WeatherForecast[]>() ?? [];
+            }
         }
+        catch { }
 
-        // Fallback to local data if API is not available
+        // Fallback to local data
         await Task.Delay(500);
         var startDate = DateOnly.FromDateTime(DateTime.Now);
         var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
@@ -54,40 +53,27 @@ internal class WeatherForecastService : IWeatherForecastService
         }).ToArray();
     }
 }
+
 public class ServerAuthService : IAuthService
 {
-    public class IdentityLoginResponse
-    {
-        public string TokenType { get; set; } = "";
-        public string AccessToken { get; set; } = "";
-        public int ExpiresIn { get; set; }
-        public string RefreshToken { get; set; } = "";
-    }
-
-    public class IdentityUserInfo
-    {
-        public string Email { get; set; } = "";
-        public bool IsEmailConfirmed { get; set; }
-    }
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IConfiguration _configuration;
 
-    public ServerAuthService(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
+    public ServerAuthService(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
     {
-        _httpClient = httpClient;
+        _httpClient = httpClientFactory.CreateClient();
+        _httpClient.BaseAddress = new Uri(configuration["ApiBaseUrl"] ?? "https://localhost:7191/");
         _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
-
-        // Configure HttpClient with API base URL
-        _httpClient.BaseAddress = new Uri(_configuration["ApiBaseUrl"] ?? "https://localhost:7191/");
     }
 
     public async Task<bool> LoginAsync(LoginRequest loginRequest)
     {
+        // This method is only called during SSR
+        // For CSR, the client calls the API controller instead
         try
         {
-            // Call the built-in Identity login endpoint
             var response = await _httpClient.PostAsJsonAsync("login", new
             {
                 email = loginRequest.Email,
@@ -102,11 +88,9 @@ public class ServerAuthService : IAuthService
                     var httpContext = _httpContextAccessor.HttpContext;
                     if (httpContext != null)
                     {
-                        // Store tokens in session
                         httpContext.Session.SetString("BearerToken", loginResponse.AccessToken);
                         httpContext.Session.SetString("RefreshToken", loginResponse.RefreshToken);
 
-                        // Create cookie authentication for Blazor
                         var claims = new List<Claim>
                         {
                             new Claim(ClaimTypes.Email, loginRequest.Email),
@@ -142,18 +126,15 @@ public class ServerAuthService : IAuthService
         var httpContext = _httpContextAccessor.HttpContext;
         if (httpContext != null)
         {
-            // Get token for logout API call
             var token = httpContext.Session.GetString("BearerToken");
             if (!string.IsNullOrEmpty(token))
             {
                 _httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
 
-                // Call Identity logout endpoint
                 await _httpClient.PostAsync("logout", null);
             }
 
-            // Clear session and cookies
             httpContext.Session.Clear();
             await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         }
@@ -171,7 +152,6 @@ public class ServerAuthService : IAuthService
                 _httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
 
-                // Call Identity manage/info endpoint
                 var response = await _httpClient.GetAsync("manage/info");
                 if (response.IsSuccessStatusCode)
                 {
@@ -181,7 +161,7 @@ public class ServerAuthService : IAuthService
                         return new UserInfo
                         {
                             Email = identityInfo.Email,
-                            Roles = [], // Identity doesn't return roles in info endpoint by default
+                            Roles = [],
                             IsAuthenticated = true
                         };
                     }
@@ -197,3 +177,17 @@ public class ServerAuthService : IAuthService
     }
 }
 
+// DTOs for Identity API responses
+public class IdentityLoginResponse
+{
+    public string TokenType { get; set; } = "";
+    public string AccessToken { get; set; } = "";
+    public int ExpiresIn { get; set; }
+    public string RefreshToken { get; set; } = "";
+}
+
+public class IdentityUserInfo
+{
+    public string Email { get; set; } = "";
+    public bool IsEmailConfirmed { get; set; }
+}

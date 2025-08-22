@@ -1,7 +1,7 @@
 ﻿@page "/login"
 @using AutoRender.Client.Models
 @using Microsoft.AspNetCore.Components.Authorization
-@inject AuthenticationStateProvider AuthStateProvider
+@inject IAuthService AuthService
 @inject NavigationManager Navigation
 @rendermode InteractiveAuto
 
@@ -38,6 +38,9 @@
     private string errorMessage = "";
     private bool isLoading = false;
 
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
     private async Task HandleLogin()
     {
         try
@@ -45,16 +48,22 @@
             isLoading = true;
             errorMessage = "";
 
-            var customAuthProvider = AuthStateProvider as CustomAuthStateProvider;
-            if (customAuthProvider != null)
+            var success = await AuthService.LoginAsync(loginRequest);
+            if (success)
             {
-                await customAuthProvider.LoginAsync(loginRequest);
-                Navigation.NavigateTo("/weather", forceLoad: true);
+                // Force a full page reload to refresh authentication state
+                var url = !string.IsNullOrEmpty(ReturnUrl) ? ReturnUrl : "/";
+                Navigation.NavigateTo(url, forceLoad: true);
+            }
+            else
+            {
+                errorMessage = "Login failed. Please check your credentials.";
             }
         }
-        catch
+        catch (Exception ex)
         {
             errorMessage = "Login failed. Please check your credentials.";
+            Console.WriteLine($"Login error: {ex.Message}");
         }
         finally
         {
