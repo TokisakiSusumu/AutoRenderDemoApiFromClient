@@ -100,55 +100,27 @@ public class ServerAuthService : IAuthService
 
     public async Task<bool> LoginAsync(LoginRequest loginRequest)
     {
-        // This method is only called during SSR
-        // For CSR, the client calls the API controller instead
+        // Always route through the API controller to handle session properly
+        // This avoids trying to set session during response rendering
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("login", new
-            {
-                email = loginRequest.Email,
-                password = loginRequest.Password
-            });
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null)
+                return false;
 
-            if (response.IsSuccessStatusCode)
-            {
-                var loginResponse = await response.Content.ReadFromJsonAsync<IdentityLoginResponse>();
-                if (loginResponse != null)
-                {
-                    var httpContext = _httpContextAccessor.HttpContext;
-                    if (httpContext != null)
-                    {
-                        httpContext.Session.SetString("BearerToken", loginResponse.AccessToken);
-                        httpContext.Session.SetString("RefreshToken", loginResponse.RefreshToken);
+            // Create internal HTTP client that calls back to the same server
+            using var client = new HttpClient();
+            var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
+            client.BaseAddress = new Uri(baseUrl);
 
-                        var claims = new List<Claim>
-                        {
-                            new Claim(ClaimTypes.Email, loginRequest.Email),
-                            new Claim(ClaimTypes.Name, loginRequest.Email)
-                        };
-
-                        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                        var authProperties = new AuthenticationProperties
-                        {
-                            IsPersistent = true,
-                            ExpiresUtc = DateTimeOffset.UtcNow.AddSeconds(loginResponse.ExpiresIn)
-                        };
-
-                        await httpContext.SignInAsync(
-                            CookieAuthenticationDefaults.AuthenticationScheme,
-                            new ClaimsPrincipal(claimsIdentity),
-                            authProperties);
-
-                        return true;
-                    }
-                }
-            }
+            var response = await client.PostAsJsonAsync("/api/auth/login", loginRequest);
+            return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Login failed: {ex.Message}");
+            return false;
         }
-        return false;
     }
 
     public async Task LogoutAsync()
