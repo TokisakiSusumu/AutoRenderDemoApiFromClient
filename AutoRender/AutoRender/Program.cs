@@ -23,23 +23,21 @@ public class Program
         builder.Services.AddDistributedMemoryCache();
         builder.Services.AddSession(options =>
         {
-            options.IdleTimeout = TimeSpan.FromHours(2);
+            options.IdleTimeout = TimeSpan.FromMinutes(50); // Changed from 2 hours
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
-            options.Cookie.SameSite = SameSiteMode.Lax; // Add this
+            options.Cookie.SameSite = SameSiteMode.Lax;
         });
 
-        // Cookie authentication for the Blazor app
         builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(options =>
             {
                 options.LoginPath = "/login";
                 options.LogoutPath = "/logout";
-                options.ExpireTimeSpan = TimeSpan.FromHours(2);
-                options.SlidingExpiration = true;
-                options.Cookie.SameSite = SameSiteMode.Lax; // Add this
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(50); // Changed from 2 hours
+                options.SlidingExpiration = false; // Changed to false - don't extend
+                options.Cookie.SameSite = SameSiteMode.Lax;
             });
-
         // Add HttpClientFactory for API calls
         builder.Services.AddHttpClient();
 

@@ -29,7 +29,6 @@ public class AuthApiController : ControllerBase
     {
         try
         {
-            // Call the Identity API login endpoint directly
             var response = await _httpClient.PostAsJsonAsync("login", new
             {
                 email = loginRequest.Email,
@@ -41,22 +40,26 @@ public class AuthApiController : ControllerBase
                 var loginResponse = await response.Content.ReadFromJsonAsync<IdentityLoginResponse>();
                 if (loginResponse != null)
                 {
-                    // Store tokens in session
+                    // Store tokens
                     HttpContext.Session.SetString("BearerToken", loginResponse.AccessToken);
                     HttpContext.Session.SetString("RefreshToken", loginResponse.RefreshToken);
 
-                    // Create cookie authentication
+                    // NEW: Store token expiration time
+                    var tokenExpiration = DateTimeOffset.UtcNow.AddSeconds(loginResponse.ExpiresIn - 600); // 10 min buffer
+                    HttpContext.Session.SetString("TokenExpiration", tokenExpiration.ToString("o"));
+
                     var claims = new List<Claim>
-                    {
-                        new Claim(ClaimTypes.Email, loginRequest.Email),
-                        new Claim(ClaimTypes.Name, loginRequest.Email)
-                    };
+                {
+                    new Claim(ClaimTypes.Email, loginRequest.Email),
+                    new Claim(ClaimTypes.Name, loginRequest.Email)
+                };
 
                     var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                     var authProperties = new AuthenticationProperties
                     {
                         IsPersistent = true,
-                        ExpiresUtc = DateTimeOffset.UtcNow.AddSeconds(loginResponse.ExpiresIn)
+                        // CHANGED: Set cookie to expire 10 minutes before token
+                        ExpiresUtc = tokenExpiration
                     };
 
                     await HttpContext.SignInAsync(

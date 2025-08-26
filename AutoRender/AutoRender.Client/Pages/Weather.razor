@@ -1,6 +1,7 @@
 ﻿@page "/weather"
 @using AutoRender.Client.Models
 @using Microsoft.AspNetCore.Authorization
+@inject NavigationManager Navigation
 @attribute [Authorize]
 @inject IWeatherForecastService WeatherForecastService
 @rendermode InteractiveAuto
@@ -10,8 +11,11 @@
 <h1>Weather</h1>
 
 <p>This component demonstrates showing data from the API.</p>
-
-@if (forecasts == null)
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+else if (forecasts == null)
 {
     <p><em>Loading...</em></p>
 }
@@ -46,12 +50,20 @@ else
 
 @code {
     private WeatherForecast[]? forecasts;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             forecasts = await WeatherForecastService.GetWeatherForecastsAsync();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("expired"))
+        {
+            // Session expired - redirect to login
+            errorMessage = "Your session has expired. Redirecting to login...";
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/login", forceLoad: true);
         }
         catch (Exception ex)
         {

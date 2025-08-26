@@ -24,7 +24,24 @@ internal class WeatherForecastService : IWeatherForecastService
 
     public async Task<WeatherForecast[]> GetWeatherForecastsAsync()
     {
-        var token = _httpContextAccessor.HttpContext?.Session.GetString("BearerToken");
+        var httpContext = _httpContextAccessor.HttpContext;
+
+        // NEW: Check if token is expired
+        var expirationStr = httpContext?.Session.GetString("TokenExpiration");
+        if (!string.IsNullOrEmpty(expirationStr))
+        {
+            if (DateTimeOffset.TryParse(expirationStr, out var expiration))
+            {
+                if (expiration <= DateTimeOffset.UtcNow)
+                {
+                    // Token expired - force logout
+                    httpContext.Session.Clear();
+                    throw new InvalidOperationException("Session expired. Please login again.");
+                }
+            }
+        }
+
+        var token = httpContext?.Session.GetString("BearerToken");
         if (!string.IsNullOrEmpty(token))
         {
             _httpClient.DefaultRequestHeaders.Authorization =
@@ -34,10 +51,23 @@ internal class WeatherForecastService : IWeatherForecastService
         try
         {
             var response = await _httpClient.GetAsync("api/weatherforecast");
+
+            // NEW: Better handling of 401
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                // Token is invalid - clear session and throw
+                httpContext?.Session.Clear();
+                throw new InvalidOperationException("Session expired. Please login again.");
+            }
+
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<WeatherForecast[]>() ?? [];
             }
+        }
+        catch (InvalidOperationException)
+        {
+            throw; // Re-throw session expired exceptions
         }
         catch { }
 
