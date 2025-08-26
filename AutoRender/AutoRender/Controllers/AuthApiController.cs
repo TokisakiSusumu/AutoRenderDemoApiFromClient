@@ -83,15 +83,6 @@ public class AuthApiController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Logout()
     {
-        var token = HttpContext.Session.GetString("BearerToken");
-        if (!string.IsNullOrEmpty(token))
-        {
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-
-            await _httpClient.PostAsync("logout", null);
-        }
-
         HttpContext.Session.Clear();
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
