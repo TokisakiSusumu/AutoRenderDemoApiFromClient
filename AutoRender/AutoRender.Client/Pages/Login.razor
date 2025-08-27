@@ -1,8 +1,7 @@
 ﻿@page "/login"
-@using AutoRender.Client.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @using Yardify.Frontend.Client.Interfaces.Authentication
-@inject IYardifyAuthenticationService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @rendermode InteractiveAuto
 
@@ -49,10 +48,27 @@
             isLoading = true;
             errorMessage = "";
 
-            var success = await AuthService.LoginAsync(loginRequest);
+            // Determine which auth service to use
+            bool success;
+            if (AuthStateProvider is CustomAuthStateProvider customProvider)
+            {
+                success = await customProvider.LoginAsync(loginRequest);
+            }
+            else if (AuthStateProvider is IYardifyAuthenticationService authService)
+            {
+                success = await authService.LoginAsync(loginRequest);
+            }
+            else
+            {
+                // Fallback: create a client directly
+                var httpClient = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
+                var fallbackService = new ClientAuthService(httpClient);
+                success = await fallbackService.LoginAsync(loginRequest);
+            }
+
             if (success)
             {
-                // Force a full page reload to refresh authentication state
+                // Always force reload after login in Auto mode to ensure authentication state is synchronized
                 var url = !string.IsNullOrEmpty(ReturnUrl) ? ReturnUrl : "/";
                 Navigation.NavigateTo(url, forceLoad: true);
             }

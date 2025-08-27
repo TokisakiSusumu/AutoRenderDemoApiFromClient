@@ -1,7 +1,7 @@
 ﻿@page "/logout"
 @using Microsoft.AspNetCore.Components.Authorization
 @using Yardify.Frontend.Client.Interfaces.Authentication
-@inject IYardifyAuthenticationService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @rendermode InteractiveAuto
 
@@ -10,8 +10,24 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        await AuthService.LogoutAsync();
-        // Force reload to clear all authentication state
+        // Determine which auth service to use and logout
+        if (AuthStateProvider is CustomAuthStateProvider customProvider)
+        {
+            await customProvider.LogoutAsync();
+        }
+        else if (AuthStateProvider is IYardifyAuthenticationService authService)
+        {
+            await authService.LogoutAsync();
+        }
+        else
+        {
+            // Fallback: create a client directly
+            var httpClient = new HttpClient { BaseAddress = new Uri(Navigation.BaseUri) };
+            var fallbackService = new ClientAuthService(httpClient);
+            await fallbackService.LogoutAsync();
+        }
+
+        // Always force reload after logout to ensure authentication state is cleared
         Navigation.NavigateTo("/", forceLoad: true);
     }
 }

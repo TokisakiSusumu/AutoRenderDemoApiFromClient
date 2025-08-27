@@ -11,7 +11,7 @@ internal class WeatherForecastService(HttpClient httpClient) : IWeatherForecastS
 {
     public async Task<WeatherForecast[]> GetWeatherForecastsAsync()
     {
-        return await httpClient.GetFromJsonAsync<WeatherForecast[]>("api/WeatherForecast");
+        return await httpClient.GetFromJsonAsync<WeatherForecast[]>("api/WeatherForecast") ?? [];
     }
 }
 
@@ -22,52 +22,59 @@ public class ClientAuthService(HttpClient httpClient) : UniversalYardifyAuthenti
 public class CustomAuthStateProvider : AuthenticationStateProvider
 {
     private readonly IYardifyAuthenticationService _authService;
-    private UserDetailDTO? _currentUser;
+    private readonly HttpClient _httpClient;
+    private AuthenticationState _anonymous = new(new ClaimsPrincipal(new ClaimsIdentity()));
 
-    public CustomAuthStateProvider(IYardifyAuthenticationService authService)
+    public CustomAuthStateProvider(IYardifyAuthenticationService authService, HttpClient httpClient)
     {
         _authService = authService;
+        _httpClient = httpClient;
     }
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        UserDetailDTO? _currentUser = await _authService.GetCurrentUserInfoAsync();
-
-        if (_currentUser?.IsAuthenticated == true)
+        try
         {
-            var claims = new List<Claim>
+            var currentUser = await _authService.GetCurrentUserInfoAsync();
+
+            if (currentUser?.IsAuthenticated == true && !string.IsNullOrEmpty(currentUser.Email))
             {
-                new Claim(ClaimTypes.Name, _currentUser.Email),
-                new Claim(ClaimTypes.Email, _currentUser.Email),
-                new Claim(ClaimTypes.Role, _currentUser.Role)
-            };
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, currentUser.Email),
+                    new Claim(ClaimTypes.Email, currentUser.Email)
+                };
 
-            var identity = new ClaimsIdentity(claims, "serverauth");
-            return new AuthenticationState(new ClaimsPrincipal(identity));
+                if (!string.IsNullOrEmpty(currentUser.Role))
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, currentUser.Role));
+                }
+
+                var identity = new ClaimsIdentity(claims, "serverauth");
+                return new AuthenticationState(new ClaimsPrincipal(identity));
+            }
         }
+        catch { }
 
-        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+        return _anonymous;
     }
 
-    //public async Task LoginAsync(LoginRequest loginRequest)
-    //{
-    //    var success = await _authService.LoginAsync(loginRequest);
-    //    if (success)
-    //    {
-    //        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
-    //    }
-    //    else
-    //    {
-    //        throw new InvalidOperationException("Login failed");
-    //    }
-    //}
+    public async Task<bool> LoginAsync(LoginRequestDTO loginRequest)
+    {
+        var success = await _authService.LoginAsync(loginRequest);
+        if (success)
+        {
+            // Force re-evaluation of authentication state
+            var authState = GetAuthenticationStateAsync();
+            NotifyAuthenticationStateChanged(authState);
+        }
+        return success;
+    }
 
-    //public async Task LogoutAsync()
-    //{
-    //    await _authService.LogoutAsync();
-    //    _currentUser = null;
-    //    NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
-    //}
+    public async Task LogoutAsync()
+    {
+        await _authService.LogoutAsync();
+        // Immediately notify that user is logged out
+        NotifyAuthenticationStateChanged(Task.FromResult(_anonymous));
+    }
 }
-
-

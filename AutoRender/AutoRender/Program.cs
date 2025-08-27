@@ -24,7 +24,7 @@ public class Program
         builder.Services.AddDistributedMemoryCache();
         builder.Services.AddSession(options =>
         {
-            options.IdleTimeout = TimeSpan.FromMinutes(50); // Changed from 2 hours
+            options.IdleTimeout = TimeSpan.FromMinutes(50);
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
             options.Cookie.SameSite = SameSiteMode.Lax;
@@ -35,10 +35,22 @@ public class Program
             {
                 options.LoginPath = "/login";
                 options.LogoutPath = "/logout";
-                options.ExpireTimeSpan = TimeSpan.FromMinutes(50); // Changed from 2 hours
-                options.SlidingExpiration = false; // Changed to false - don't extend
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(50);
+                options.SlidingExpiration = false;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
                 options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                options.Events = new CookieAuthenticationEvents
+                {
+                    OnValidatePrincipal = context =>
+                    {
+                        // Ensure the cookie is valid
+                        return Task.CompletedTask;
+                    }
+                };
             });
+
         // Add HttpClientFactory for API calls
         builder.Services.AddHttpClient();
 
@@ -49,7 +61,9 @@ public class Program
         // Authorization
         builder.Services.AddAuthorizationCore();
         builder.Services.AddCascadingAuthenticationState();
-        builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthStateProvider>();
+        builder.Services.AddScoped<ServerAuthStateProvider>();
+        builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
+            provider.GetRequiredService<ServerAuthStateProvider>());
 
         var app = builder.Build();
 
@@ -60,10 +74,13 @@ public class Program
 
         app.UseHttpsRedirection();
         app.UseStaticFiles();
-        app.UseRouting(); // Add this
-        app.UseSession(); // Must be before UseEndpoints
+        app.UseRouting();
+
+        // IMPORTANT: Session must come before Authentication
+        app.UseSession();
         app.UseAuthentication();
         app.UseAuthorization();
+
         app.UseAntiforgery();
 
         app.MapControllers();

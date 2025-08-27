@@ -1,25 +1,34 @@
-﻿using AutoRender.Client;
-using AutoRender.Client.Models;
-using Microsoft.AspNetCore.Components.Authorization;
+﻿using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 using Yardify.Frontend.Client.Interfaces.Authentication;
 
 namespace AutoRender;
 
-public class ServerAuthStateProvider(IYardifyAuthenticationService authService, IHttpContextAccessor httpContextAccessor) : AuthenticationStateProvider
+public class ServerAuthStateProvider : AuthenticationStateProvider, IYardifyAuthenticationService
 {
-    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
-    {
-        var httpContext = httpContextAccessor.HttpContext;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IYardifyAuthenticationService _authService;
 
-        // Check if user is authenticated via cookie
+    public ServerAuthStateProvider(IHttpContextAccessor httpContextAccessor, IYardifyAuthenticationService authService)
+    {
+        _httpContextAccessor = httpContextAccessor;
+        _authService = authService;
+    }
+
+    public override Task<AuthenticationState> GetAuthenticationStateAsync()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+
         if (httpContext?.User?.Identity?.IsAuthenticated == true)
         {
-            // User is authenticated, return the existing principal
-            return new AuthenticationState(httpContext.User);
+            return Task.FromResult(new AuthenticationState(httpContext.User));
         }
 
-        // Not authenticated
-        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+        return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
     }
+
+    // Delegate IYardifyAuthenticationService methods
+    public Task<bool> LoginAsync(LoginRequestDTO loginRequest) => _authService.LoginAsync(loginRequest);
+    public Task<bool> LogoutAsync() => _authService.LogoutAsync();
+    public Task<UserDetailDTO?> GetCurrentUserInfoAsync() => _authService.GetCurrentUserInfoAsync();
 }
