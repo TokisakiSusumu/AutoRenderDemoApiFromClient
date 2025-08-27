@@ -1,7 +1,8 @@
 ﻿@page "/login"
 @using AutoRender.Client.Models
 @using Microsoft.AspNetCore.Components.Authorization
-@inject IAuthService AuthService
+@using Yardify.Frontend.Client.Interfaces.Authentication
+@inject IYardifyAuthenticationService AuthService
 @inject NavigationManager Navigation
 @rendermode InteractiveAuto
 
@@ -34,7 +35,7 @@
 </EditForm>
 
 @code {
-    private LoginRequest loginRequest = new();
+    private LoginRequestDTO loginRequest = new();
     private string errorMessage = "";
     private bool isLoading = false;
 

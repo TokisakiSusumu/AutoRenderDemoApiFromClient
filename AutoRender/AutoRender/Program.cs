@@ -2,6 +2,7 @@ using AutoRender.Client;
 using AutoRender.Components;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Yardify.Frontend.Client.Interfaces.Authentication;
 
 namespace AutoRender;
 
@@ -42,7 +43,7 @@ public class Program
         builder.Services.AddHttpClient();
 
         // Configure services for server-side rendering
-        builder.Services.AddScoped<IAuthService, ServerAuthService>();
+        builder.Services.AddScoped<IYardifyAuthenticationService, ServerAuthService>();
         builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
 
         // Authorization

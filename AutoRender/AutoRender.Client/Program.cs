@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Yardify.Frontend.Client.Interfaces.Authentication;
 
 namespace AutoRender.Client
 {
@@ -14,7 +15,7 @@ namespace AutoRender.Client
                 BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
             });
 
-            builder.Services.AddScoped<IAuthService, ClientAuthService>();
+            builder.Services.AddScoped<IYardifyAuthenticationService, ClientAuthService>();
             builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
 
             builder.Services.AddAuthorizationCore();

@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using Yardify.Frontend.Client.Interfaces.Authentication;
+using Yardify.Frontend.Client.Interfaces.Authentication.UniversalRequests;
 
 namespace AutoRender;
 
@@ -84,112 +86,22 @@ internal class WeatherForecastService : IWeatherForecastService
     }
 }
 
-public class ServerAuthService : IAuthService
+public class ServerAuthService(
+    IHttpClientFactory httpClientFactory,
+    IHttpContextAccessor httpContextAccessor) :
+    UniversalYardifyAuthenticationService(CreateHttpClient(httpClientFactory, httpContextAccessor))
 {
-    private readonly HttpClient _httpClient;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IConfiguration _configuration;
-
-    public ServerAuthService(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
+    private static HttpClient CreateHttpClient(
+        IHttpClientFactory httpClientFactory,
+        IHttpContextAccessor httpContextAccessor)
     {
-        _httpClient = httpClientFactory.CreateClient();
-        _httpClient.BaseAddress = new Uri(configuration["ApiBaseUrl"] ?? "https://localhost:7191/");
-        _httpContextAccessor = httpContextAccessor;
-        _configuration = configuration;
-    }
-
-    public async Task<bool> LoginAsync(LoginRequest loginRequest)
-    {
-        // Always route through the API controller to handle session properly
-        // This avoids trying to set session during response rendering
-        try
-        {
-            var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext == null)
-                return false;
-
-            // Create internal HTTP client that calls back to the same server
-            using var client = new HttpClient();
-            var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
-            client.BaseAddress = new Uri(baseUrl);
-
-            var response = await client.PostAsJsonAsync("/api/auth/login", loginRequest);
-            return response.IsSuccessStatusCode;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Login failed: {ex.Message}");
-            return false;
-        }
-    }
-
-    public async Task LogoutAsync()
-    {
-        var httpContext = _httpContextAccessor.HttpContext;
+        var httpClient = httpClientFactory.CreateClient();
+        var httpContext = httpContextAccessor?.HttpContext;
         if (httpContext != null)
         {
-            var token = httpContext.Session.GetString("BearerToken");
-            if (!string.IsNullOrEmpty(token))
-            {
-                _httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
-
-                await _httpClient.PostAsync("logout", null);
-            }
-
-            httpContext.Session.Clear();
-            await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            httpClient.BaseAddress = new Uri(
+                $"{httpContext.Request.Scheme}://{httpContext.Request.Host}");
         }
+        return httpClient;
     }
-
-    public async Task<UserInfo?> GetCurrentUserAsync()
-    {
-        try
-        {
-            var httpContext = _httpContextAccessor.HttpContext;
-            var token = httpContext?.Session.GetString("BearerToken");
-
-            if (!string.IsNullOrEmpty(token))
-            {
-                _httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
-
-                var response = await _httpClient.GetAsync("manage/info");
-                if (response.IsSuccessStatusCode)
-                {
-                    var identityInfo = await response.Content.ReadFromJsonAsync<IdentityUserInfo>();
-                    if (identityInfo != null)
-                    {
-                        return new UserInfo
-                        {
-                            Email = identityInfo.Email,
-                            Roles = [],
-                            IsAuthenticated = true
-                        };
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Get current user failed: {ex.Message}");
-        }
-
-        return null;
-    }
-}
-
-// DTOs for Identity API responses
-public class IdentityLoginResponse
-{
-    public string TokenType { get; set; } = "";
-    public string AccessToken { get; set; } = "";
-    public int ExpiresIn { get; set; }
-    public string RefreshToken { get; set; } = "";
-}
-
-public class IdentityUserInfo
-{
-    public string Email { get; set; } = "";
-    public bool IsEmailConfirmed { get; set; }
 }

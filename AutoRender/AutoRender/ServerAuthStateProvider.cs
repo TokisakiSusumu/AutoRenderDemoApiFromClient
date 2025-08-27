@@ -2,10 +2,11 @@
 using AutoRender.Client.Models;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
+using Yardify.Frontend.Client.Interfaces.Authentication;
 
 namespace AutoRender;
 
-public class ServerAuthStateProvider(IAuthService authService, IHttpContextAccessor httpContextAccessor) : AuthenticationStateProvider
+public class ServerAuthStateProvider(IYardifyAuthenticationService authService, IHttpContextAccessor httpContextAccessor) : AuthenticationStateProvider
 {
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
