@@ -35,20 +35,9 @@ public class Program
             {
                 options.LoginPath = "/login";
                 options.LogoutPath = "/logout";
-                options.ExpireTimeSpan = TimeSpan.FromMinutes(50);
-                options.SlidingExpiration = false;
-                options.Cookie.HttpOnly = true;
-                options.Cookie.IsEssential = true;
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(50); // Changed from 2 hours
+                options.SlidingExpiration = false; // Changed to false - don't extend
                 options.Cookie.SameSite = SameSiteMode.Lax;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-                options.Events = new CookieAuthenticationEvents
-                {
-                    OnValidatePrincipal = context =>
-                    {
-                        // Ensure the cookie is valid
-                        return Task.CompletedTask;
-                    }
-                };
             });
 
         // Add HttpClientFactory for API calls
@@ -58,9 +47,11 @@ public class Program
         builder.Services.AddScoped<IYardifyAuthenticationService, ServerAuthService>();
         builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
 
-        // Authorization
+        // Authorization - Use unified provider
         builder.Services.AddAuthorizationCore();
         builder.Services.AddCascadingAuthenticationState();
+
+        // Register the unified auth state provider
         builder.Services.AddScoped<ServerAuthStateProvider>();
         builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
             provider.GetRequiredService<ServerAuthStateProvider>());

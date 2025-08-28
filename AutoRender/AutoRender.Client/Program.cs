@@ -19,12 +19,13 @@ namespace AutoRender.Client
             builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
 
             builder.Services.AddAuthorizationCore();
+
+            // Use CustomAuthStateProvider for client-side
             builder.Services.AddScoped<CustomAuthStateProvider>();
             builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
                 provider.GetRequiredService<CustomAuthStateProvider>());
 
             await builder.Build().RunAsync();
-
         }
     }
 }

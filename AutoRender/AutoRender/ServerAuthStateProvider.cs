@@ -4,31 +4,22 @@ using Yardify.Frontend.Client.Interfaces.Authentication;
 
 namespace AutoRender;
 
-public class ServerAuthStateProvider : AuthenticationStateProvider, IYardifyAuthenticationService
+public class ServerAuthStateProvider(
+    IYardifyAuthenticationService authService,
+    IHttpContextAccessor httpContextAccessor) : AuthenticationStateProvider
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IYardifyAuthenticationService _authService;
-
-    public ServerAuthStateProvider(IHttpContextAccessor httpContextAccessor, IYardifyAuthenticationService authService)
+    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        _httpContextAccessor = httpContextAccessor;
-        _authService = authService;
-    }
+        var httpContext = httpContextAccessor.HttpContext;
 
-    public override Task<AuthenticationState> GetAuthenticationStateAsync()
-    {
-        var httpContext = _httpContextAccessor.HttpContext;
-
+        // Check if user is authenticated via cookie
         if (httpContext?.User?.Identity?.IsAuthenticated == true)
         {
-            return Task.FromResult(new AuthenticationState(httpContext.User));
+            // User is authenticated, return the existing principal
+            return new AuthenticationState(httpContext.User);
         }
 
-        return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
+        // Not authenticated
+        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
     }
-
-    // Delegate IYardifyAuthenticationService methods
-    public Task<bool> LoginAsync(LoginRequestDTO loginRequest) => _authService.LoginAsync(loginRequest);
-    public Task<bool> LogoutAsync() => _authService.LogoutAsync();
-    public Task<UserDetailDTO?> GetCurrentUserInfoAsync() => _authService.GetCurrentUserInfoAsync();
 }

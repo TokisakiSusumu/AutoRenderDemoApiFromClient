@@ -1,8 +1,9 @@
-﻿@page "/weather"
+﻿@attribute [Authorize]
+@page "/weather"
+
 @using AutoRender.Client.Models
 @using Microsoft.AspNetCore.Authorization
 @inject NavigationManager Navigation
-@attribute [Authorize]
 @inject IWeatherForecastService WeatherForecastService
 @rendermode InteractiveAuto
 
