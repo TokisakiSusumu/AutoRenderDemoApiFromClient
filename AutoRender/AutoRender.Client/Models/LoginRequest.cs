@@ -16,6 +16,6 @@ public class LoginResponse
 public class UserInfo
 {
     public string Email { get; set; } = "";
-    public string[] Roles { get; set; } = Array.Empty<string>();
+    public string Role { get; set; }
     public bool IsAuthenticated { get; set; }
 }

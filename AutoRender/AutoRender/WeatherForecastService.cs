@@ -2,6 +2,7 @@
 using AutoRender.Client.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using Yardify.Frontend.Client.Interfaces.Authentication;

@@ -25,27 +25,31 @@ public sealed partial class YardifyAuthenticationController : ControllerBase
                 var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponseDTO>();
                 if (loginResponse != null)
                 {
-                    // Store tokens
+                    // Store tokens in session
                     HttpContext.Session.SetString("BearerToken", loginResponse.AccessToken);
                     HttpContext.Session.SetString("RefreshToken", loginResponse.RefreshToken);
 
-                    // NEW: Store token expiration time
+                    // Store token expiration
                     var tokenExpiration = DateTimeOffset.UtcNow.AddSeconds(loginResponse.ExpiresIn);
                     HttpContext.Session.SetString("TokenExpiration", tokenExpiration.ToString("o"));
 
+                    // Create claims
                     var claims = new List<Claim>
                     {
                         new Claim(ClaimTypes.Email, loginRequest.Email),
-                        new Claim(ClaimTypes.Name, loginRequest.Email)
+                        new Claim(ClaimTypes.Name, loginRequest.Email),
+                        new Claim("TokenExpiration", tokenExpiration.ToString("o"))
                     };
 
                     var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                     var authProperties = new AuthenticationProperties
                     {
                         IsPersistent = true,
-                        ExpiresUtc = tokenExpiration
+                        ExpiresUtc = tokenExpiration,
+                        AllowRefresh = false
                     };
 
+                    // Sign in with cookie authentication
                     await HttpContext.SignInAsync(
                         CookieAuthenticationDefaults.AuthenticationScheme,
                         new ClaimsPrincipal(claimsIdentity),
@@ -59,7 +63,7 @@ public sealed partial class YardifyAuthenticationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { success = false, message = "An error occurred during login" });
+            return StatusCode(500, new { success = false, message = ex.Message });
         }
     }
 }

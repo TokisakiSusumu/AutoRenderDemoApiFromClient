@@ -1,4 +1,5 @@
 ﻿using AutoRender.Client.Models;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Net.Http.Json;
 using System.Security.Claims;
@@ -22,13 +23,11 @@ public class ClientAuthService(HttpClient httpClient) : UniversalYardifyAuthenti
 public class CustomAuthStateProvider : AuthenticationStateProvider
 {
     private readonly IYardifyAuthenticationService _authService;
-    private readonly HttpClient _httpClient;
     private AuthenticationState _anonymous = new(new ClaimsPrincipal(new ClaimsIdentity()));
 
-    public CustomAuthStateProvider(IYardifyAuthenticationService authService, HttpClient httpClient)
+    public CustomAuthStateProvider(IYardifyAuthenticationService authService)
     {
         _authService = authService;
-        _httpClient = httpClient;
     }
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -57,24 +56,5 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
         catch { }
 
         return _anonymous;
-    }
-
-    public async Task<bool> LoginAsync(LoginRequestDTO loginRequest)
-    {
-        var success = await _authService.LoginAsync(loginRequest);
-        if (success)
-        {
-            // Force re-evaluation of authentication state
-            var authState = GetAuthenticationStateAsync();
-            NotifyAuthenticationStateChanged(authState);
-        }
-        return success;
-    }
-
-    public async Task LogoutAsync()
-    {
-        await _authService.LogoutAsync();
-        // Immediately notify that user is logged out
-        NotifyAuthenticationStateChanged(Task.FromResult(_anonymous));
     }
 }

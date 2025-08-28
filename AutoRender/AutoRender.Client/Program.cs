@@ -20,7 +20,7 @@ namespace AutoRender.Client
 
             builder.Services.AddAuthorizationCore();
 
-            // Use CustomAuthStateProvider for client-side
+            // Use the improved auth state provider
             builder.Services.AddScoped<CustomAuthStateProvider>();
             builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
                 provider.GetRequiredService<CustomAuthStateProvider>());

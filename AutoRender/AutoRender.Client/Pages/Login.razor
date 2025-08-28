@@ -1,10 +1,9 @@
 ﻿@page "/login"
 @using Microsoft.AspNetCore.Components.Authorization
 @using Yardify.Frontend.Client.Interfaces.Authentication
-@using Yardify.Shared.Authentication
 @inject IYardifyAuthenticationService AuthService
 @inject NavigationManager Navigation
-@rendermode InteractiveAuto
+@rendermode InteractiveWebAssembly
 
 <h3>Login</h3>
 
@@ -14,13 +13,16 @@
 }
 
 <EditForm Model="loginRequest" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
     <div class="form-group mb-3">
         <label>Email:</label>
         <InputText @bind-Value="loginRequest.Email" class="form-control" />
+        <ValidationMessage For="@(() => loginRequest.Email)" />
     </div>
     <div class="form-group mb-3">
         <label>Password:</label>
         <InputText @bind-Value="loginRequest.Password" type="password" class="form-control" />
+        <ValidationMessage For="@(() => loginRequest.Password)" />
     </div>
     <button type="submit" class="btn btn-primary" disabled="@isLoading">
         @if (isLoading)
@@ -48,10 +50,11 @@
         {
             isLoading = true;
             errorMessage = "";
+
+            // Always use the auth service - it will handle both server and client
             var success = await AuthService.LoginAsync(loginRequest);
             if (success)
             {
-                // Force a full page reload to refresh authentication state
                 var url = !string.IsNullOrEmpty(ReturnUrl) ? ReturnUrl : "/";
                 Navigation.NavigateTo(url, forceLoad: true);
             }
@@ -62,8 +65,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = "Login failed. Please check your credentials.";
-            Console.WriteLine($"Login error: {ex.Message}");
+            errorMessage = $"Login failed: {ex.Message}";
         }
         finally
         {

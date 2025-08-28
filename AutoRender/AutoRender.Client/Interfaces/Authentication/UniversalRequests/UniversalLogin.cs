@@ -4,7 +4,7 @@ namespace Yardify.Frontend.Client.Interfaces.Authentication.UniversalRequests;
 
 public abstract partial class UniversalYardifyAuthenticationService
 {
-    public async Task<bool> LoginAsync(LoginRequestDTO loginRequest)
+    public virtual async Task<bool> LoginAsync(LoginRequestDTO loginRequest)
     {
         // Always route through the API controller to handle session properly
         // This avoids trying to set session during response rendering

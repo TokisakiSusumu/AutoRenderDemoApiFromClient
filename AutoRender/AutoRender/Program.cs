@@ -2,6 +2,7 @@ using AutoRender.Client;
 using AutoRender.Components;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Yardify.Frontend.Client.Interfaces.Authentication;
 
 namespace AutoRender;
@@ -18,6 +19,7 @@ public class Program
             .AddInteractiveWebAssemblyComponents();
 
         builder.Services.AddControllers();
+        builder.Services.AddAntiforgery();
         builder.Services.AddHttpContextAccessor();
 
         // Session for storing bearer tokens
@@ -35,26 +37,22 @@ public class Program
             {
                 options.LoginPath = "/login";
                 options.LogoutPath = "/logout";
-                options.ExpireTimeSpan = TimeSpan.FromMinutes(50); // Changed from 2 hours
-                options.SlidingExpiration = false; // Changed to false - don't extend
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(50);
+                options.SlidingExpiration = false;
                 options.Cookie.SameSite = SameSiteMode.Lax;
+                // Add this to ensure cookies work properly
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             });
 
-        // Add HttpClientFactory for API calls
         builder.Services.AddHttpClient();
 
         // Configure services for server-side rendering
         builder.Services.AddScoped<IYardifyAuthenticationService, ServerAuthService>();
         builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
 
-        // Authorization - Use unified provider
         builder.Services.AddAuthorizationCore();
         builder.Services.AddCascadingAuthenticationState();
-
-        // Register the unified auth state provider
-        builder.Services.AddScoped<ServerAuthStateProvider>();
-        builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
-            provider.GetRequiredService<ServerAuthStateProvider>());
+        builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthStateProvider>();
 
         var app = builder.Build();
 

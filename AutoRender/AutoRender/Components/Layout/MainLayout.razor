@@ -1,7 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
-
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -12,7 +11,10 @@
             <AuthorizeView>
                 <Authorized>
                     <span class="me-3">Hello, @context.User.Identity?.Name</span>
-                    <a href="/logout">Logout</a>
+                    <form action="/api/auth/logout" method="post" class="d-inline">
+                        @* <AntiforgeryToken /> *@
+                        <button type="submit" class="btn btn-link">Logout</button>
+                    </form>
                 </Authorized>
                 <NotAuthorized>
                     <a href="/login">Login</a>

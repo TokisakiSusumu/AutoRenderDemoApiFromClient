@@ -1,25 +1,42 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
-using Yardify.Frontend.Client.Interfaces.Authentication;
 
 namespace AutoRender;
 
-public class ServerAuthStateProvider(
-    IYardifyAuthenticationService authService,
-    IHttpContextAccessor httpContextAccessor) : AuthenticationStateProvider
+public class ServerAuthStateProvider : AuthenticationStateProvider
 {
-    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
-    {
-        var httpContext = httpContextAccessor.HttpContext;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-        // Check if user is authenticated via cookie
+    public ServerAuthStateProvider(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public override Task<AuthenticationState> GetAuthenticationStateAsync()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+
         if (httpContext?.User?.Identity?.IsAuthenticated == true)
         {
-            // User is authenticated, return the existing principal
-            return new AuthenticationState(httpContext.User);
+            // Check if token is still valid
+            var expirationStr = httpContext.Session.GetString("TokenExpiration");
+            if (!string.IsNullOrEmpty(expirationStr))
+            {
+                if (DateTimeOffset.TryParse(expirationStr, out var expiration))
+                {
+                    if (expiration <= DateTimeOffset.UtcNow)
+                    {
+                        // Token expired - return anonymous
+                        return Task.FromResult(new AuthenticationState(
+                            new ClaimsPrincipal(new ClaimsIdentity())));
+                    }
+                }
+            }
+
+            return Task.FromResult(new AuthenticationState(httpContext.User));
         }
 
-        // Not authenticated
-        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+        return Task.FromResult(new AuthenticationState(
+            new ClaimsPrincipal(new ClaimsIdentity())));
     }
 }
