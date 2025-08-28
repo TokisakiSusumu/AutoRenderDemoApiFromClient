@@ -21,9 +21,9 @@ namespace AutoRender.Client
             builder.Services.AddAuthorizationCore();
 
             // Use the improved auth state provider
-            builder.Services.AddScoped<CustomAuthStateProvider>();
+            builder.Services.AddScoped<ClientAuthStateProvider>();
             builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
-                provider.GetRequiredService<CustomAuthStateProvider>());
+                provider.GetRequiredService<ClientAuthStateProvider>());
 
             await builder.Build().RunAsync();
         }

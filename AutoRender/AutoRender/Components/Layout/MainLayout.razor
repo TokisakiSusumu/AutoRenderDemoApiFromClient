@@ -12,7 +12,6 @@
                 <Authorized>
                     <span class="me-3">Hello, @context.User.Identity?.Name</span>
                     <form action="/api/auth/logout" method="post" class="d-inline">
-                        @* <AntiforgeryToken /> *@
                         <button type="submit" class="btn btn-link">Logout</button>
                     </form>
                 </Authorized>
