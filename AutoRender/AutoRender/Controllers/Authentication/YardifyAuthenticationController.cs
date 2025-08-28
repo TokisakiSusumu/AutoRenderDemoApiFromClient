@@ -11,6 +11,6 @@ public sealed partial class YardifyAuthenticationController : ControllerBase
         IConfiguration configuration)
     {
         _httpClient = httpClientFactory.CreateClient();
-        _httpClient.BaseAddress = new Uri(configuration["ApiBaseUrl"] ?? "https://localhost:7046/");
+        _httpClient.BaseAddress = new Uri(configuration["ApiBaseUrl"] ?? "https://localhost:7191/");
     }
 }
