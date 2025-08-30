@@ -1,0 +1,34 @@
+﻿@page "/login"
+@inject NavigationManager Navigation
+@* Remove @rendermode InteractiveServer - use static SSR instead *@
+
+<PageTitle>Login</PageTitle>
+
+<h3>Login</h3>
+
+<form method="post" action="/api/auth/login-form">
+    <AntiforgeryToken />
+    <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+
+    <div class="form-group mb-3">
+        <label>Email:</label>
+        <input type="email" name="email" class="form-control" required />
+    </div>
+
+    <div class="form-group mb-3">
+        <label>Password:</label>
+        <input type="password" name="password" class="form-control" required />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Login</button>
+</form>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private IQueryCollection Request => HttpContext?.Request.Query ?? QueryCollection.Empty;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+}
