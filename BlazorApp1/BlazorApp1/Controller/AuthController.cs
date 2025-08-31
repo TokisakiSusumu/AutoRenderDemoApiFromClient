@@ -39,27 +39,6 @@ namespace TestAuthAuto.Controllers
             await _authService.LogoutAsync();
             return Redirect("/");
         }
-
-        // API endpoints for WASM client
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
-        {
-            var success = await _authService.LoginAsync(request.Email, request.Password);
-            return success ? Ok() : Unauthorized();
-        }
-
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            await _authService.LogoutAsync();
-            return Ok();
-        }
-
-        [HttpGet("state")]
-        public async Task<AuthenticationState> GetAuthenticationState()
-        {
-            return await _authService.GetAuthenticationStateAsync();
-        }
     }
 
     public class LoginRequest
