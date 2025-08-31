@@ -11,18 +11,15 @@ public class ServerAuthService : IAuthService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly AuthenticationSettings _authSettings;
     private readonly ILogger<ServerAuthService> _logger;
 
     public ServerAuthService(
         IHttpClientFactory httpClientFactory,
         IHttpContextAccessor httpContextAccessor,
-        IOptions<AuthenticationSettings> authSettings,
         ILogger<ServerAuthService> logger)
     {
         _httpClientFactory = httpClientFactory;
         _httpContextAccessor = httpContextAccessor;
-        _authSettings = authSettings.Value;
         _logger = logger;
     }
 
@@ -54,7 +51,7 @@ public class ServerAuthService : IAuthService
                     var authProperties = new AuthenticationProperties
                     {
                         IsPersistent = true,
-                        ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(_authSettings.CookieExpirationMinutes),
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddSeconds(10),
                         // Store last activity time for inactivity tracking
                         Items = { ["LastActivity"] = DateTimeOffset.UtcNow.ToString("o") }
                     };

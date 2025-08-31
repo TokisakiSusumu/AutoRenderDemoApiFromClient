@@ -46,8 +46,8 @@ namespace BlazorApp1
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.LoginPath = "/login";
                 options.LogoutPath = "/logout";
-                // Match the API expiration time
-                options.ExpireTimeSpan = TimeSpan.FromSeconds(10);
+
+                options.ExpireTimeSpan = TimeSpan.FromSeconds(10); // Was 10 seconds
                 options.SlidingExpiration = true;
                 // This is the important part for inactivity timeout
                 options.Events = new CookieAuthenticationEvents
@@ -58,7 +58,7 @@ namespace BlazorApp1
                         if (!string.IsNullOrEmpty(lastActivity))
                         {
                             var lastActivityTime = DateTimeOffset.Parse(lastActivity);
-                            var inactivityTimeout = TimeSpan.FromMinutes(10);
+                            var inactivityTimeout = TimeSpan.FromSeconds(10);
 
                             if (DateTimeOffset.UtcNow - lastActivityTime > inactivityTimeout)
                             {
