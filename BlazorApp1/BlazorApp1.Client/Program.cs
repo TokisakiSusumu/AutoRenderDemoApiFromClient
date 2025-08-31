@@ -16,8 +16,6 @@ namespace BlazorApp1.Client
                 BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
             });
 
-            // Register authentication services
-            builder.Services.AddScoped<IAuthService, ClientAuthService>();
             builder.Services.AddScoped<AuthenticationStateProvider, ClientAuthenticationStateProvider>();
 
             builder.Services.AddAuthorizationCore();

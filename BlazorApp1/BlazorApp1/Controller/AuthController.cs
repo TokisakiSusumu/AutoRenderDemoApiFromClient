@@ -1,4 +1,4 @@
-﻿using BlazorApp1.Client.Services;
+﻿using BlazorApp1.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace TestAuthAuto.Controllers

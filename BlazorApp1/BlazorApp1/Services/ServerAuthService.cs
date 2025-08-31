@@ -1,8 +1,6 @@
-﻿using BlazorApp1.Client.Services;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Net;
-using System.Net.Http.Json;
 using System.Security.Claims;
 
 namespace BlazorApp1.Services
