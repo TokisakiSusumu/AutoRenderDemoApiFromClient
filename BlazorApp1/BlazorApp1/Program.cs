@@ -54,20 +54,26 @@ namespace BlazorApp1
                 {
                     OnValidatePrincipal = async context =>
                     {
+                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                         var lastActivity = context.Properties.GetString("LastActivity");
+
                         if (!string.IsNullOrEmpty(lastActivity))
                         {
                             var lastActivityTime = DateTimeOffset.Parse(lastActivity);
-                            var inactivityTimeout = TimeSpan.FromSeconds(10);
+                            var timeSinceActivity = DateTimeOffset.UtcNow - lastActivityTime;
 
-                            if (DateTimeOffset.UtcNow - lastActivityTime > inactivityTimeout)
+                            logger.LogInformation("Cookie validation: Last activity {LastActivity}, Time since: {TimeSince}s",
+                                lastActivityTime, timeSinceActivity.TotalSeconds);
+
+                            if (timeSinceActivity > TimeSpan.FromSeconds(10))
                             {
+                                logger.LogWarning("Cookie expired due to inactivity. Signing out user.");
                                 context.RejectPrincipal();
                                 await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                             }
                             else
                             {
-                                // Update last activity time
+                                logger.LogInformation("Cookie renewed. Updating last activity time.");
                                 context.Properties.SetString("LastActivity", DateTimeOffset.UtcNow.ToString("o"));
                                 context.ShouldRenew = true;
                             }
