@@ -25,7 +25,6 @@ namespace BlazorApp1.Services
                 CookieContainer = _cookieContainer,
                 UseCookies = true
             };
-
             using var client = new HttpClient(handler)
             {
                 BaseAddress = new Uri("https://localhost:7191/")

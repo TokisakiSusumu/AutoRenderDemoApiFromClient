@@ -1,11 +1,14 @@
 ﻿@page "/login"
 @inject NavigationManager Navigation
-@* Remove @rendermode InteractiveServer - use static SSR instead *@
 
 <PageTitle>Login</PageTitle>
 
 <h3>Login</h3>
 
+@if (Error != null)
+{
+    <label>Failed to login: @Error</label>
+}
 <form method="post" action="/api/auth/login-form">
     <AntiforgeryToken />
     <input type="hidden" name="returnUrl" value="@ReturnUrl" />
@@ -27,8 +30,8 @@
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
-    private IQueryCollection Request => HttpContext?.Request.Query ?? QueryCollection.Empty;
-
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery]
+    private string? Error { get; set; }
 }
