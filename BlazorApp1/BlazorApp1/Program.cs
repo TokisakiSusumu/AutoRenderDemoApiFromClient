@@ -46,7 +46,7 @@ namespace BlazorApp1
                     options.LogoutPath = "/logout";
 
                     // Blazor cookie expires in 10 seconds
-                    options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+                    options.ExpireTimeSpan = TimeSpan.FromHours(1);
                     options.SlidingExpiration = true;
 
                     options.Events = new CookieAuthenticationEvents

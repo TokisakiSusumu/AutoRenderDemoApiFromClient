@@ -16,10 +16,6 @@ public class AuthenticationSyncMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Log all cookies for debugging
-        _logger.LogDebug("Request cookies: {Cookies}",
-            string.Join(", ", context.Request.Cookies.Select(c => $"{c.Key}={c.Value.Substring(0, Math.Min(10, c.Value.Length))}...")));
-
         // Check authentication synchronization
         var hasBlazorAuth = context.User.Identity?.IsAuthenticated == true;
         var hasApiCookie = context.Request.Cookies.ContainsKey(".AspNetCore.Identity.Application");
