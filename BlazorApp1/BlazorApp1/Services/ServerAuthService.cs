@@ -89,7 +89,7 @@ namespace BlazorApp1.Services
                         var authProperties = new AuthenticationProperties
                         {
                             IsPersistent = true,
-                            ExpiresUtc = DateTimeOffset.UtcNow.AddSeconds(10)
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(10)
                         };
 
                         await httpContext.SignInAsync(

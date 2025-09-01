@@ -59,7 +59,6 @@ namespace BlazorApp1
                             // Check if the API cookie still exists
                             var hasApiCookie = context.HttpContext.Request.Cookies
                                 .ContainsKey(".AspNetCore.Identity.Application");
-
                             if (!hasApiCookie)
                             {
                                 logger.LogWarning(
