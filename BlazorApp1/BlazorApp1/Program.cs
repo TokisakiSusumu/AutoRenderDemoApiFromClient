@@ -56,16 +56,27 @@ namespace BlazorApp1
                             var logger = context.HttpContext.RequestServices
                                 .GetRequiredService<ILogger<Program>>();
 
-                            // Check if the API cookie still exists
+                            // Check if we have the API expiration time
+                            var apiExpiresClaim = context.Principal?.FindFirst("ApiAuthExpires")?.Value;
+                            if (apiExpiresClaim != null && long.TryParse(apiExpiresClaim, out var expiresUnix))
+                            {
+                                var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresUnix);
+                                if (DateTimeOffset.UtcNow > expiresAt)
+                                {
+                                    logger.LogWarning("API authentication has expired - forcing re-login");
+                                    context.RejectPrincipal();
+                                    return;
+                                }
+                            }
+
+                            // Also check if cookie exists (fallback for older sessions)
                             var hasApiCookie = context.HttpContext.Request.Cookies
                                 .ContainsKey(".AspNetCore.Identity.Application");
                             if (!hasApiCookie)
                             {
-                                logger.LogWarning(
-                                    "Blazor session valid but API cookie missing - forcing re-login");
-
-                                // The API session is gone, so invalidate Blazor session too
+                                logger.LogWarning("API cookie missing - forcing re-login");
                                 context.RejectPrincipal();
+                                return;
                             }
                             else
                             {

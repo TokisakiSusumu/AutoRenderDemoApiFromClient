@@ -59,6 +59,11 @@ namespace BlazorApp1.Services
 
                     if (apiCookie != null && !httpContext.Response.HasStarted)
                     {
+                        string? authExpires = null;
+                        if (response.Headers.TryGetValues("X-Auth-Expires", out var expiresValues))
+                        {
+                            authExpires = expiresValues.FirstOrDefault();
+                        }
                         // Forward the API cookie to the browser
                         // The browser needs this for future API calls
                         httpContext.Response.Cookies.Append(
@@ -81,7 +86,10 @@ namespace BlazorApp1.Services
                             // Add a session ID to track this specific login session
                             new Claim("SessionId", Guid.NewGuid().ToString())
                         };
-
+                        if (!string.IsNullOrEmpty(authExpires))
+                        {
+                            claims.Add(new Claim("ApiAuthExpires", authExpires));
+                        }
                         var claimsIdentity = new ClaimsIdentity(
                             claims,
                             CookieAuthenticationDefaults.AuthenticationScheme);
